@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+
+<html ng-app="myApp">
+
+<head>
+    <link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css"/>
+    <link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css"/>
+    <script src="//ajax.googleapis.com/ajax/libs/angularjs/1.5.6/angular.min.js"></script>
+    <script src="//ajax.googleapis.com/ajax/libs/angularjs/1.5.6/angular-mocks.js"></script>
+    <script>
+        var myApp = angular.module('myApp', ['ngMockE2E']);
+        // create the controller and inject Angular's $scope
+        myApp.controller('mainController', function ($scope, $http) {
+            //set up select list values
+            $scope.items = [{val: '0', lbl: "No"}, {val: '1', lbl: "Yes"}];
+            $scope.genres = [
+                {val: '1', lbl: "Action"},
+                {val: '2', lbl: "Sci-Fi"},
+                {val: '3', lbl: "Comedy"},
+                {val: '4', lbl: "Drama" },
+                {val: '5', lbl: "Horror"}
+            ];
+
+            //set up form model
+            $scope.formData = {};
+
+            //submit form
+            $scope.submitForm = function () {
+                //console.log('Submitted data', $scope.formData);
+                $http({
+                    method: "POST",
+                    url: "/api/movie",
+                    data: JSON.stringify($scope.formData)
+                }).success(function (data, status, headers, config) {
+                    //console.log('Success Response', data);
+                    $scope.valid = true;
+                    $scope.response = data;
+                    $scope.messages = data.message;
+
+                }).error(function (data, status, headers, config) {
+                    //console.log('Error Response', data);
+                    $scope.valid = false;
+                    $scope.response = data;
+                    $scope.errors = data.message;
+                });
+
+                //reset form
+                $scope.formData = {};
+                $scope.formData.released = $scope.items[1].val;
+                $scope.movieForm.$setPristine();
+                $scope.movieForm.$setUntouched();
+            };
+        });
+
+        // define our fake backend
+        myApp.run(function ($httpBackend) {
+            $httpBackend.whenPOST('/api/movie').respond(function (method, url, data, headers) {
+                //console.log('Received data:', method, url, data, headers);
+                var dataObj = JSON.parse(data);
+                if (dataObj.title && dataObj.title && dataObj.year && dataObj.genre && (dataObj.released==='1'||dataObj.released==='0')) {
+                    return [201, {message: "Success! Movie Submitted"}, {}];
+                } else {
+                    return [400, {message: "Missing or invalid values entered"}, {}];
+                }
+            });
+        });
+    </script>
+    <style>
+        #main {
+            padding-top: 80px;
+            padding-bottom: 80px;
+        }
+    </style>
+</head>
+
+<body ng-app="myApp" ng-controller="mainController">
+
+<nav class="navbar navbar-default">
+    <div class="container">
+        <div class="navbar-header">
+            <div class="navbar-brand">Angular Movie Submission Form</div>
+        </div>
+    </div>
+</nav>
+
+<div id="main">
+
+    <div class="container">
+        <div class="col-sm-8 col-sm-offset-2">
+            <div class="page-header"><h1>Add Movie</h1></div>
+
+            <form class="form-horizontal" name="movieForm" ng-submit="submitForm()" novalidate>
+                <div class="form-group" ng-class="{'has-error' : movieForm.title.$invalid && !movieForm.title.$pristine}">
+                    <label class="col-sm-2 control-label">Title: </label>
+                    <div class="col-sm-10">
+                        <input type="text" name="title" ng-model="formData.title" class="form-control" placeholder="Movie Title"
+                               ng-pattern="/^[a-zA-Z0-9 ]*$/" required>
+                        <p ng-show="userForm.title.$invalid && !userForm.title.$pristine" class="help-block">Enter a valid Title.</p>
+                    </div>
+                </div>
+
+                <div class="form-group" ng-class="{'has-error' : movieForm.year.$invalid && !movieForm.year.$pristine}">
+                    <label class="col-sm-2 control-label">Year: </label>
+                    <div class="col-sm-10">
+                        <input type="text" name="year" ng-model="formData.year" class="form-control" placeholder="Release Year"
+                               ng-pattern="/^[0-9]+$/" required/>
+                        <p ng-show="movieForm.year.$invalid && !movieForm.year.$pristine" class="help-block">Enter a valid Year.</p>
+                    </div>
+                </div>
+
+                <div class="form-group" ng-class="{'has-error' : movieForm.director.$invalid && !movieForm.director.$pristine}">
+                    <label class="col-sm-2 control-label">Director: </label>
+                    <div class="col-sm-10">
+                        <input type="text" name="director" ng-model="formData.director" class="form-control" placeholder="Director"
+                               ng-pattern="/^[a-zA-Z ]*$/" required/>
+                        <p ng-show="movieForm.director.$invalid && !movieForm.director.$pristine" class="help-block">Enter a valid Director.</p>
+                    </div>
+                </div>
+
+                <div class="form-group" ng-class="{'has-error' : movieForm.genre.$invalid && !movieForm.genre.$pristine}">
+                    <label class="col-sm-2 control-label">Genre: </label>
+                    <div class="col-sm-10">
+                        <select name="genre" ng-model="formData.genre" class="form-control" required>
+                            <option value="">- Please Select -</option>
+                            <option ng-repeat="genre in genres" value="{{genre.val}}">{{genre.lbl}}</option>
+                        </select>
+                        <p ng-show="movieForm.genre.$invalid && !movieForm.genre.$pristine" class="help-block">Select a Genre.</p>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="col-sm-2 control-label">Released:</label>
+                    <div class="col-sm-10">
+                        <select name="released" ng-model="formData.released" class="form-control" ng-init="formData.released = formData.released || items[1].val">
+                            <option ng-repeat="item in items" value="{{item.val}}">{{item.lbl}}</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <div class="col-sm-offset-2 col-sm-10">
+                        <button type="submit" class="btn btn-primary" ng-disabled="movieForm.$invalid">Submit</button>
+                    </div>
+                </div>
+                <div id="messages" class="alert alert-success" data-ng-show="messages" data-ng-bind="messages"></div>
+                <div id="errors" class="alert alert-danger" data-ng-show="errors" data-ng-bind="errors"></div>
+            </form>
+
+        </div>
+    </div>
+</div>
+
+<footer>
+</footer>
+
+</body>
+
+</html>
